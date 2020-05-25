@@ -1,3 +1,5 @@
+use std::marker::PhantomData;
+
 use wasmer_runtime_core::{
     codegen::{Event, EventSink, FunctionMiddleware, InternalEvent},
     error::RuntimeError,
@@ -21,24 +23,37 @@ static INTERNAL_FIELD: InternalField = InternalField::allocate();
 /// Each compiler backend with Metering enabled should produce the same cost used at runtime for
 /// the same function calls so we can say that the metering is deterministic.
 ///
-pub struct Metering {
+pub struct Metering<T: OperatorPoints> {
     limit: u64,
     current_block: u64,
+    phantom: PhantomData<T>,
 }
 
-impl Metering {
-    pub fn new(limit: u64) -> Metering {
-        Metering {
+impl<T: OperatorPoints> Metering<T> {
+    pub fn new(limit: u64) -> Self {
+        Self {
             limit,
             current_block: 0,
+            phantom: PhantomData,
         }
+    }
+}
+
+pub trait OperatorPoints {
+    fn op_points<'a, 'b: 'a>(op: &'b Operator<'a>) -> u64;
+}
+
+pub trait DefaultOperatorPoints {
+    #[inline]
+    fn op_points<'a, 'b: 'a>(_op: &'b Operator<'a>) -> u64 {
+        1
     }
 }
 
 #[derive(Copy, Clone, Debug)]
 pub struct ExecutionLimitExceededError;
 
-impl FunctionMiddleware for Metering {
+impl<T: OperatorPoints> FunctionMiddleware for Metering<T> {
     type Error = String;
     fn feed_event<'a, 'b: 'a>(
         &mut self,
@@ -52,7 +67,8 @@ impl FunctionMiddleware for Metering {
                 self.current_block = 0;
             }
             Event::Wasm(&ref op) | Event::WasmOwned(ref op) => {
-                self.current_block += 1;
+                self.current_block += T::op_points(op);
+
                 match *op {
                     Operator::Loop { .. }
                     | Operator::Block { .. }
