@@ -90,6 +90,10 @@ pub struct Features {
     ///
     /// [threads-prop]: https://github.com/webassembly/threads
     pub threads: bool,
+    /// Whether support for the [multi-value proposal][multi-value] is enabled.
+    ///
+    /// [multi-value]: https://github.com/WebAssembly/multi-value
+    pub multi_value: bool,
 }
 
 /// Use this to point to a compiler config struct provided by the backend.

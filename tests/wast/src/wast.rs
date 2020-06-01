@@ -284,6 +284,7 @@ impl Wast {
             features: Features {
                 simd: true,
                 threads: true,
+                multi_value: true,
             },
             nan_canonicalization: true,
             enable_verification: true,
